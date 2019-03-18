@@ -19,11 +19,17 @@ class Cell<TItem> {
 
 type Row<TItem> = Array<Cell<TItem>>;
 
-export class Table<TKeyA, TKeyB, TItem> {
+export default class Table<TKeyA, TKeyB, TItem> {
     private readonly _items = Array<Row<TItem>>();
     private readonly _keysA = new Map<TKeyA, number>();
     private readonly _keysB = new Map<TKeyB, number>();
 
+    /**
+     * Set or create value by keys combination
+     * @param keyA Key A
+     * @param keyB Key B
+     * @param item New value
+     */
     set(keyA: TKeyA, keyB: TKeyB, item: TItem): void {
         const indexA = this.getIndex(this._keysA, keyA);
         const indexB = this.getIndex(this._keysB, keyB);
@@ -41,16 +47,12 @@ export class Table<TKeyA, TKeyB, TItem> {
         this._items[indexA][indexB] = new Cell(item);
     }
 
-    get(keyA: TKeyA, keyB: TKeyB): TItem|undefined {
-        const indexA = this._keysA.get(keyA);
-        const indexB = this._keysB.get(keyB);
-
-        if (indexA == undefined || indexB == undefined) {
-            return undefined;
-        }
-        return this._items[indexA][indexB].value;
-    }
-
+    /**
+     * Check value specified
+     * @param keyA Key A
+     * @param keyB Key B
+     * @returns true, if value specified
+     */
     has(keyA: TKeyA, keyB: TKeyB): boolean {
         const indexA = this._keysA.get(keyA);
         const indexB = this._keysB.get(keyB);
@@ -65,20 +67,35 @@ export class Table<TKeyA, TKeyB, TItem> {
         return !cell.isEmpty;
     }
 
-    getAll(keyA?: TKeyA, keyB?: TKeyB): Array<TItem> {
+    /**
+     * Get values by specified keys
+     * @param keyA 
+     * @param keyB 
+     */
+    get(keyA: TKeyA, keyB: TKeyB): TItem | undefined {
+        if (keyA == undefined && keyB == undefined) {
+            return undefined;
+        }
+
+        const indexA = this._keysA.get(keyA);
+        const indexB = this._keysB.get(keyB);
+
+        if (indexA == undefined || indexB == undefined) {
+            return undefined;
+        }
+        const cell = this._items[indexA][indexB];
+        return cell.isEmpty ? undefined : cell.value;
+    }
+
+    /**
+     * Get values by specified keys
+     * @param keyA 
+     * @param keyB 
+     */
+    getAll(keysA?: TKeyA|TKeyA[], keysB?: TKeyB|TKeyB[]): TItem | undefined | Array<TItem> {
+        const iA = this.getIndexes(this._keysA, keysA);
+        const iB = this.getIndexes(this._keysB, keysB);
         const items = new Array<TItem>();
-        const iA = keyA != undefined
-            ? this._keysA.has(keyA)
-                ? [this._keysA.get(keyA)!]
-                : new Array<number>()
-            : Array.from(this._keysA.values());
-
-        const iB = keyB != undefined
-            ? this._keysB.has(keyB)
-                ? [this._keysB.get(keyB)!]
-                : new Array<number>()
-            : Array.from(this._keysB.values());
-
         for (const a of iA) {
             for (const b of iB) {
                 const item = this._items[a][b]
@@ -172,15 +189,22 @@ export class Table<TKeyA, TKeyB, TItem> {
         existing.set(key, index);
         return index;
     }
-    render(keyA: (key:TKeyA) => string, keyB: (key:TKeyB) => string, item: (item:TItem|undefined) => string): string[][] {
-        const out = new Array<Array<string>>();
 
-        out.push([''].concat(Array.from(this._keysB.keys()).map((key) => keyB(key))));
-
-        for (const a of this._keysA) {
-            out.push([keyA(a[0])].concat(this._items[a[1]].map((i) => item(i.isEmpty ? undefined : i.value))));
+    private getIndexes<TKey>(existing: Map<TKey, number>, keys: TKey|TKey[]|undefined): Array<number> {
+        if (keys == undefined) {
+            return Array.from(existing.values());
+        }
+        if (keys instanceof Array) {
+            return keys
+            .filter((key) => existing.has(key))
+            .map((key) => existing.get(key)!);
         }
 
-        return out;
+        const indexes = new Array<number>();
+        const index = existing.get(keys);
+        if (index != undefined) {
+            indexes.push(index);
+        }
+        return indexes;
     }
 }
